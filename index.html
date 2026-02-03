@@ -1,459 +1,624 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quadratics Explorer: Interactive Study Guide</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-            height: 400px;
-            max-height: 400px;
-        }
-        
-        input[type=range] {
-            -webkit-appearance: none; 
-            background: transparent; 
-        }
-        
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 18px;
-            width: 18px;
-            border-radius: 50%;
-            background: #4f46e5;
-            cursor: pointer;
-            margin-top: -7px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
+import React, { useState, useEffect } from 'react';
+import { 
+  Calculator, 
+  BookOpen, 
+  Brain, 
+  LayoutDashboard, 
+  Sigma, 
+  X, 
+  Check, 
+  ArrowRight,
+  TrendingUp,
+  Activity,
+  Moon,
+  Sun,
+  Menu,
+  ChevronRight
+} from 'lucide-react';
 
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: #e2e8f0;
-            border-radius: 2px;
-        }
-        
-        body {
-            background-color: #FDFBF7;
-            color: #2D3748;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
+// --- Components ---
 
-        .ai-loading {
-            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
+const Card = ({ children, className = "" }) => (
+  <div className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden ${className}`}>
+    {children}
+  </div>
+);
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
-        }
+const Button = ({ children, onClick, variant = "primary", className = "", icon: Icon }) => {
+  const baseStyle = "px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 active:scale-95";
+  const variants = {
+    primary: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 dark:shadow-none",
+    secondary: "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600",
+    outline: "border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-500 hover:text-indigo-600",
+    ghost: "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-indigo-600",
+  };
+  
+  return (
+    <button onClick={onClick} className={`${baseStyle} ${variants[variant]} ${className}`}>
+      {Icon && <Icon size={18} />}
+      {children}
+    </button>
+  );
+};
 
-        .gradient-bg {
-            background: linear-gradient(135deg, #fdfbf7 0%, #f3f4f6 100%);
-        }
-    </style>
-</head>
-<body class="antialiased selection:bg-indigo-100 selection:text-indigo-900">
+// --- Math Logic ---
 
-    <!-- Chosen Palette: Warm Neutrals & Indigo Accents -->
-    <!-- Application Structure Plan:
-         1. Hero Section: Introduction to Quadratics.
-         2. The Laboratory: Real-time manipulation of coefficients with Chart.js visualization.
-         3. ✨ AI Learning Assistant: Integration with Gemini for Concept Explanations and Real-world Context.
-         4. Analysis Section: Traditional mathematical metrics (Discriminant, Vieta's).
-         5. Knowledge Check: Assessment quiz.
-    -->
+const solveQuadratic = (a, b, c) => {
+  const A = parseFloat(a);
+  const B = parseFloat(b);
+  const C = parseFloat(c);
+  if (isNaN(A) || isNaN(B) || isNaN(C)) return null;
+  if (A === 0) return { error: "Coefficient 'a' cannot be zero for a quadratic equation." };
 
-    <nav class="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <span class="text-xl font-bold tracking-tight text-gray-800">Quadratics<span class="text-indigo-600">Explorer</span></span>
-                </div>
-                <div class="hidden sm:flex items-center space-x-8">
-                    <button onclick="scrollToSection('intro')" class="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors">Intro</button>
-                    <button onclick="scrollToSection('lab')" class="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors">Laboratory</button>
-                    <button onclick="scrollToSection('ai-insights')" class="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors font-bold">✨ AI Assistant</button>
-                    <button onclick="scrollToSection('analysis')" class="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors">Analysis</button>
-                    <button onclick="scrollToSection('quiz')" class="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors">Quiz</button>
-                </div>
-            </div>
+  const disc = B * B - 4 * A * C;
+  const vertexX = -B / (2 * A);
+  const vertexY = A * vertexX * vertexX + B * vertexX + C;
+
+  let roots = [];
+  if (disc > 0) {
+    roots = [
+      (-B + Math.sqrt(disc)) / (2 * A),
+      (-B - Math.sqrt(disc)) / (2 * A)
+    ];
+  } else if (disc === 0) {
+    roots = [-B / (2 * A)];
+  }
+
+  return {
+    discriminant: disc,
+    roots,
+    vertex: { x: vertexX, y: vertexY },
+    axisOfSymmetry: `x = ${vertexX}`
+  };
+};
+
+const solveLinear = (m, b) => {
+  const M = parseFloat(m);
+  const B = parseFloat(b);
+  if (isNaN(M) || isNaN(B)) return null;
+
+  return {
+    root: M !== 0 ? -B / M : null,
+    yIntercept: B,
+    slope: M,
+    isHorizontal: M === 0
+  };
+};
+
+const solveSystem = (a1, b1, c1, a2, b2, c2) => {
+  // a1x + b1y = c1
+  // a2x + b2y = c2
+  const det = a1 * b2 - a2 * b1;
+  if (det === 0) return null; // Parallel or coincident
+
+  const x = (c1 * b2 - c2 * b1) / det;
+  const y = (a1 * c2 - a2 * c1) / det;
+  return { x, y };
+};
+
+// --- Views ---
+
+const Dashboard = ({ changeView }) => (
+  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div onClick={() => changeView('quadratic')} className="cursor-pointer group">
+        <Card className="h-full p-6 hover:border-indigo-500 transition-colors relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Sigma size={100} />
+          </div>
+          <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg flex items-center justify-center text-indigo-600 mb-4">
+            <Calculator size={24} />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Quadratic Solver</h3>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Calculate roots, vertices, and discriminants instantly.</p>
+        </Card>
+      </div>
+
+      <div onClick={() => changeView('quiz')} className="cursor-pointer group">
+        <Card className="h-full p-6 hover:border-emerald-500 transition-colors relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Brain size={100} />
+          </div>
+          <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg flex items-center justify-center text-emerald-600 mb-4">
+            <Activity size={24} />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Practice Quiz</h3>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Test your algebra skills with generated problems.</p>
+        </Card>
+      </div>
+
+      <div onClick={() => changeView('reference')} className="cursor-pointer group">
+        <Card className="h-full p-6 hover:border-amber-500 transition-colors relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <BookOpen size={100} />
+          </div>
+          <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/50 rounded-lg flex items-center justify-center text-amber-600 mb-4">
+            <LayoutDashboard size={24} />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Formula Sheet</h3>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Quick access to essential algebra laws and identities.</p>
+        </Card>
+      </div>
+    </div>
+
+    <Card className="p-8 bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-none">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div>
+          <h2 className="text-2xl font-bold mb-2">Welcome to Algebra Mastery</h2>
+          <p className="text-indigo-100 max-w-lg">
+            Your all-in-one suite for solving equations, visualizing functions, and mastering algebraic concepts.
+          </p>
         </div>
-    </nav>
+        <Button onClick={() => changeView('linear')} variant="secondary" className="whitespace-nowrap">
+          Start with Linear Equations
+        </Button>
+      </div>
+    </Card>
+  </div>
+);
 
-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+const QuadraticTool = () => {
+  const [values, setValues] = useState({ a: 1, b: -3, c: 2 });
+  const [result, setResult] = useState(null);
 
-        <!-- Section 1: Introduction -->
-        <section id="intro" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-            <div class="max-w-3xl mx-auto text-center space-y-6">
-                <h1 class="text-4xl font-extrabold text-gray-900">Mastering Quadratic Equations</h1>
-                <p class="text-lg text-gray-600 leading-relaxed">
-                    A dynamic environment for exploring second-degree polynomials, now enhanced with ✨ Gemini AI insights.
-                </p>
-                <div class="bg-indigo-50 inline-block px-8 py-4 rounded-xl border border-indigo-100">
-                    <p class="text-3xl font-mono font-bold text-gray-800">ax² + bx + c = 0</p>
-                </div>
-            </div>
-        </section>
+  useEffect(() => {
+    setResult(solveQuadratic(values.a, values.b, values.c));
+  }, [values]);
 
-        <!-- Section 2: The Laboratory -->
-        <section id="lab">
-            <div class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-900">The Laboratory</h2>
-                <p class="text-gray-600 mt-2">Adjust the sliders to see the parabola transform instantly.</p>
-            </div>
+  const handleChange = (e) => {
+    setValues({ ...values, [e.target.name]: e.target.value });
+  };
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <div class="lg:col-span-4 space-y-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center mb-1">
-                            <label class="text-sm font-bold text-gray-700">Coefficient a (Leading)</label>
-                            <span id="val-a" class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">1.0</span>
-                        </div>
-                        <input type="range" id="slider-a" min="-5" max="5" step="0.1" value="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
-                    <div class="space-y-4 pt-4 border-t border-gray-100">
-                        <div class="flex justify-between items-center mb-1">
-                            <label class="text-sm font-bold text-gray-700">Coefficient b (Linear)</label>
-                            <span id="val-b" class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">0.0</span>
-                        </div>
-                        <input type="range" id="slider-b" min="-10" max="10" step="0.5" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
-                    <div class="space-y-4 pt-4 border-t border-gray-100">
-                        <div class="flex justify-between items-center mb-1">
-                            <label class="text-sm font-bold text-gray-700">Coefficient c (Constant)</label>
-                            <span id="val-c" class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">0.0</span>
-                        </div>
-                        <input type="range" id="slider-c" min="-10" max="10" step="0.5" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
-                    <div class="mt-8 p-4 bg-indigo-50 rounded-xl text-center border border-indigo-100">
-                        <p id="equation-display" class="text-xl font-mono font-bold text-gray-900">1x² + 0x + 0 = 0</p>
-                    </div>
-                </div>
-
-                <div class="lg:col-span-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <div class="chart-container">
-                        <canvas id="parabolaChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Section 3: ✨ AI Insights (Gemini Integration) -->
-        <section id="ai-insights" class="bg-indigo-50/50 rounded-3xl p-8 border border-indigo-100">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                <div class="max-w-2xl">
-                    <h2 class="text-2xl font-bold text-indigo-900 flex items-center gap-2">
-                        ✨ AI Learning Assistant
-                    </h2>
-                    <p class="text-indigo-700 mt-2">Get personalized mathematical insights and real-world application challenges powered by Gemini.</p>
-                </div>
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="generateAIExplanation()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold shadow-md transition-all flex items-center gap-2 active:scale-95">
-                        ✨ Explain Concept
-                    </button>
-                    <button onclick="generateAIChallenge()" class="bg-white hover:bg-indigo-50 text-indigo-600 border border-indigo-200 px-6 py-3 rounded-xl font-semibold shadow-md transition-all flex items-center gap-2 active:scale-95">
-                        ✨ Challenge Me!
-                    </button>
-                </div>
-            </div>
-
-            <div id="ai-output-container" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Explanation Card -->
-                <div id="ai-explanation-card" class="bg-white p-6 rounded-2xl border border-indigo-100 shadow-sm opacity-0 transition-opacity duration-500">
-                    <div class="flex items-center gap-2 mb-4 text-indigo-900 font-bold border-b border-indigo-50 pb-2">
-                        <span>🔍</span> Visual Analysis
-                    </div>
-                    <div id="ai-explanation-content" class="text-gray-700 text-sm leading-relaxed whitespace-pre-line"></div>
-                </div>
-                <!-- Challenge Card -->
-                <div id="ai-challenge-card" class="bg-white p-6 rounded-2xl border border-indigo-100 shadow-sm opacity-0 transition-opacity duration-500">
-                    <div class="flex items-center gap-2 mb-4 text-indigo-900 font-bold border-b border-indigo-50 pb-2">
-                        <span>🚀</span> Scenario Challenge
-                    </div>
-                    <div id="ai-challenge-content" class="text-gray-700 text-sm leading-relaxed whitespace-pre-line"></div>
-                </div>
-            </div>
-            
-            <div id="ai-placeholder" class="text-center py-16 border-2 border-dashed border-indigo-200 rounded-2xl">
-                <div class="text-indigo-300 text-4xl mb-3">✨</div>
-                <p class="text-indigo-500 font-medium">Click a button above to generate AI-powered insights for your equation.</p>
-            </div>
-        </section>
-
-        <!-- Section 4: Analysis & Insights -->
-        <section id="analysis">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Discriminant Card -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-gray-900">The Discriminant</h3>
-                        <span class="text-xs font-mono text-gray-400">b² - 4ac</span>
-                    </div>
-                    <div class="flex-grow flex flex-col justify-center items-center py-6">
-                        <div id="discriminant-value" class="text-5xl font-extrabold text-gray-800 mb-2">0</div>
-                        <div id="discriminant-badge" class="px-4 py-1 rounded-full text-sm font-bold text-white bg-gray-500 transition-colors">Calculating...</div>
-                    </div>
-                </div>
-
-                <!-- Vieta's Card -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-gray-900">Vieta's Formulas</h3>
-                        <span class="text-xs font-mono text-gray-400">Root Properties</span>
-                    </div>
-                    <div class="space-y-6 flex-grow">
-                        <div>
-                            <div class="flex justify-between mb-1">
-                                <span class="text-sm text-gray-600">Sum of Roots (-b/a)</span>
-                                <span id="vieta-sum" class="text-sm font-mono font-bold">0</span>
-                            </div>
-                            <div class="w-full bg-gray-100 rounded-full h-2">
-                                <div id="bar-sum" class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: 50%"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between mb-1">
-                                <span class="text-sm text-gray-600">Product of Roots (c/a)</span>
-                                <span id="vieta-prod" class="text-sm font-mono font-bold">0</span>
-                            </div>
-                            <div class="w-full bg-gray-100 rounded-full h-2">
-                                <div id="bar-prod" class="bg-emerald-500 h-2 rounded-full transition-all duration-300" style="width: 50%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Section 5: Quiz -->
-        <section id="quiz">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">Knowledge Check</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="quiz-container">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <p class="font-bold text-gray-900 mb-4">1. How can you identify if a parabola opens downward just by looking at the equation?</p>
-                    <div class="space-y-2">
-                        <button class="quiz-btn w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm transition-all" data-correct="true">If the leading coefficient 'a' is negative.</button>
-                        <button class="quiz-btn w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm transition-all" data-correct="false">If the constant 'c' is negative.</button>
-                        <button class="quiz-btn w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm transition-all" data-correct="false">If the discriminant is zero.</button>
-                    </div>
-                    <div class="mt-3 hidden text-sm feedback"></div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer class="bg-gray-50 border-t border-gray-200 py-10 mt-10">
-        <div class="max-w-6xl mx-auto px-4 text-center">
-            <p class="text-gray-500 text-sm">✨ Interactive Learning Engine | Built with Gemini API</p>
+  return (
+    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg text-indigo-600">
+          <Sigma size={24} />
         </div>
-    </footer>
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Quadratic Solver</h2>
+      </div>
 
-    <script>
-        // --- Gemini API Configuration ---
-        const apiKey = ""; // Provided by environment
-        const state = { a: 1.0, b: 0.0, c: 0.0 };
+      <Card className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {['a', 'b', 'c'].map((key) => (
+            <div key={key}>
+              <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 uppercase">{key} Value</label>
+              <input
+                type="number"
+                name={key}
+                value={values[key]}
+                onChange={handleChange}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono"
+              />
+            </div>
+          ))}
+        </div>
 
-        async function callGemini(prompt, systemPrompt) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] }
-            };
+        <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 text-center mb-6">
+          <p className="text-lg font-mono text-slate-700 dark:text-slate-300">
+            {values.a}x² + {values.b}x + {values.c} = 0
+          </p>
+        </div>
 
-            for (let i = 0; i < 5; i++) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    const result = await response.json();
-                    return result.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
-                } catch (e) {
-                    await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
-                }
-            }
-            return "Connection error. Please check your network and try again.";
-        }
+        {result && !result.error && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                <span className="text-xs font-bold text-indigo-500 uppercase tracking-wider">Discriminant</span>
+                <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1">{result.discriminant}</p>
+              </div>
+              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-100 dark:border-purple-800">
+                <span className="text-xs font-bold text-purple-500 uppercase tracking-wider">Vertex</span>
+                <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1">({result.vertex.x.toFixed(2)}, {result.vertex.y.toFixed(2)})</p>
+              </div>
+            </div>
 
-        async function generateAIExplanation() {
-            const placeholder = document.getElementById('ai-placeholder');
-            const output = document.getElementById('ai-output-container');
-            const card = document.getElementById('ai-explanation-card');
-            const content = document.getElementById('ai-explanation-content');
-            
-            placeholder.classList.add('hidden');
-            output.classList.remove('hidden');
-            card.classList.remove('opacity-0');
-            content.innerHTML = '<div class="ai-loading flex items-center gap-2 text-indigo-500 italic"><span class="animate-spin text-lg">✨</span> Analyzing mathematical curve...</div>';
+            <div>
+              <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-3">Roots (Solutions)</h4>
+              {result.roots.length > 0 ? (
+                <div className="flex gap-4">
+                  {result.roots.map((root, idx) => (
+                    <div key={idx} className="flex-1 p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-center font-bold border border-emerald-100 dark:border-emerald-800">
+                      x = {root.toFixed(3)}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300 rounded-lg text-center">
+                  No real roots found
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
 
-            const prompt = `Analyze the quadratic equation y = ${state.a}x² + ${state.b}x + ${state.c}. Explain in 3 concise bullet points: 
-                1. Direction of opening and width. 
-                2. Where it crosses the y-axis. 
-                3. The nature of its roots based on the current coefficients. 
-                Make the tone educational and encouraging.`;
-            
-            const system = "You are a professional math tutor who simplifies complex algebra into clear, visual explanations. Do not use LaTeX symbols, use plain text.";
-            
-            const explanation = await callGemini(prompt, system);
-            content.innerHTML = explanation;
-        }
+const LinearTool = () => {
+  const [mode, setMode] = useState('simple'); // 'simple' or 'system'
+  const [linear, setLinear] = useState({ m: 2, b: -4 });
+  const [sys, setSys] = useState({ a1: 1, b1: 1, c1: 5, a2: 2, b2: -1, c2: 1 });
+  
+  const linearResult = solveLinear(linear.m, linear.b);
+  const sysResult = solveSystem(sys.a1, sys.b1, sys.c1, sys.a2, sys.b2, sys.c2);
 
-        async function generateAIChallenge() {
-            const placeholder = document.getElementById('ai-placeholder');
-            const output = document.getElementById('ai-output-container');
-            const card = document.getElementById('ai-challenge-card');
-            const content = document.getElementById('ai-challenge-content');
-            
-            placeholder.classList.add('hidden');
-            output.classList.remove('hidden');
-            card.classList.remove('opacity-0');
-            content.innerHTML = '<div class="ai-loading flex items-center gap-2 text-indigo-500 italic"><span class="animate-bounce text-lg">✨</span> Dreaming up a scenario...</div>';
+  return (
+    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-pink-100 dark:bg-pink-900 rounded-lg text-pink-600">
+            <TrendingUp size={24} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Linear Algebra</h2>
+        </div>
+        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+          <button 
+            onClick={() => setMode('simple')} 
+            className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${mode === 'simple' ? 'bg-white dark:bg-slate-700 shadow text-indigo-600 dark:text-indigo-300' : 'text-slate-500'}`}
+          >
+            Equation
+          </button>
+          <button 
+            onClick={() => setMode('system')} 
+            className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${mode === 'system' ? 'bg-white dark:bg-slate-700 shadow text-indigo-600 dark:text-indigo-300' : 'text-slate-500'}`}
+          >
+            System (2x2)
+          </button>
+        </div>
+      </div>
 
-            const prompt = `Create a real-world word problem (max 4 lines) where y = ${state.a}x² + ${state.b}x + ${state.c} represents something (like a ball being thrown, a bridge arch, or a profit curve). Ask one specific question the student could solve using this equation.`;
-            
-            const system = "You are an imaginative STEM educator who creates engaging, real-world math applications.";
-            
-            const challenge = await callGemini(prompt, system);
-            content.innerHTML = challenge;
-        }
+      {mode === 'simple' ? (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">Slope-Intercept Form (y = mx + b)</h3>
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase">Slope (m)</label>
+              <input type="number" value={linear.m} onChange={(e) => setLinear({...linear, m: e.target.value})} 
+                className="w-full mt-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase">Y-Intercept (b)</label>
+              <input type="number" value={linear.b} onChange={(e) => setLinear({...linear, b: e.target.value})} 
+                className="w-full mt-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none" />
+            </div>
+          </div>
+          
+          <div className="p-4 bg-slate-900 text-slate-200 rounded-lg font-mono text-center mb-6">
+            y = {linear.m}x {linear.b >= 0 ? '+' : '-'} {Math.abs(linear.b)}
+          </div>
 
-        // --- Core Application Logic ---
-        const sliderA = document.getElementById('slider-a');
-        const sliderB = document.getElementById('slider-b');
-        const sliderC = document.getElementById('slider-c');
-        const valA = document.getElementById('val-a');
-        const valB = document.getElementById('val-b');
-        const valC = document.getElementById('val-c');
-        const eqDisplay = document.getElementById('equation-display');
-        const discValue = document.getElementById('discriminant-value');
-        const discBadge = document.getElementById('discriminant-badge');
-        const vietaSum = document.getElementById('vieta-sum');
-        const vietaProd = document.getElementById('vieta-prod');
+          <div className="grid grid-cols-3 gap-4">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
+              <div className="text-xs text-slate-500 uppercase font-bold">X-Intercept</div>
+              <div className="text-xl font-bold text-slate-800 dark:text-white mt-1">{linearResult?.root?.toFixed(2) ?? 'None'}</div>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
+              <div className="text-xs text-slate-500 uppercase font-bold">Slope</div>
+              <div className="text-xl font-bold text-slate-800 dark:text-white mt-1">{linearResult?.slope}</div>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
+              <div className="text-xs text-slate-500 uppercase font-bold">Y-Intercept</div>
+              <div className="text-xl font-bold text-slate-800 dark:text-white mt-1">{linearResult?.yIntercept}</div>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">System of Equations</h3>
+          <div className="grid grid-cols-1 gap-4 mb-6">
+             <div className="flex items-center gap-2">
+                <input type="number" className="w-16 p-2 rounded border dark:bg-slate-900 dark:border-slate-700" value={sys.a1} onChange={e => setSys({...sys, a1: e.target.value})} />
+                <span>x +</span>
+                <input type="number" className="w-16 p-2 rounded border dark:bg-slate-900 dark:border-slate-700" value={sys.b1} onChange={e => setSys({...sys, b1: e.target.value})} />
+                <span>y =</span>
+                <input type="number" className="w-16 p-2 rounded border dark:bg-slate-900 dark:border-slate-700" value={sys.c1} onChange={e => setSys({...sys, c1: e.target.value})} />
+             </div>
+             <div className="flex items-center gap-2">
+                <input type="number" className="w-16 p-2 rounded border dark:bg-slate-900 dark:border-slate-700" value={sys.a2} onChange={e => setSys({...sys, a2: e.target.value})} />
+                <span>x +</span>
+                <input type="number" className="w-16 p-2 rounded border dark:bg-slate-900 dark:border-slate-700" value={sys.b2} onChange={e => setSys({...sys, b2: e.target.value})} />
+                <span>y =</span>
+                <input type="number" className="w-16 p-2 rounded border dark:bg-slate-900 dark:border-slate-700" value={sys.c2} onChange={e => setSys({...sys, c2: e.target.value})} />
+             </div>
+          </div>
 
-        const ctx = document.getElementById('parabolaChart').getContext('2d');
-        let parabolaChart;
+          <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+            {sysResult ? (
+              <div className="flex justify-around items-center">
+                <div className="text-center">
+                   <div className="text-sm text-slate-500">Value of X</div>
+                   <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{sysResult.x.toFixed(2)}</div>
+                </div>
+                <div className="h-10 w-px bg-slate-300 dark:bg-slate-700"></div>
+                <div className="text-center">
+                   <div className="text-sm text-slate-500">Value of Y</div>
+                   <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{sysResult.y.toFixed(2)}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-red-500 font-medium">No unique solution (Lines are parallel or identical)</div>
+            )}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
 
-        function initChart() {
-            const data = generateChartPoints();
-            parabolaChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: 'f(x)',
-                        data: data,
-                        borderColor: '#4f46e5',
-                        borderWidth: 3,
-                        pointRadius: 0,
-                        fill: false,
-                        tension: 0.4
-                    },
-                    {
-                        label: 'Axis',
-                        data: [{x: -10, y: 0}, {x: 10, y: 0}],
-                        borderColor: '#e2e8f0',
-                        borderWidth: 1,
-                        pointRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { type: 'linear', position: 'center', min: -10, max: 10 },
-                        y: { type: 'linear', position: 'center', min: -15, max: 15 }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
+const QuizMode = () => {
+  const [problem, setProblem] = useState(null);
+  const [answer, setAnswer] = useState("");
+  const [feedback, setFeedback] = useState(null); // 'correct', 'incorrect', null
+  const [streak, setStreak] = useState(0);
 
-        function generateChartPoints() {
-            const points = [];
-            for (let x = -10; x <= 10; x += 0.2) {
-                let y = (state.a * (x * x)) + (state.b * x) + state.c;
-                points.push({ x: x, y: y });
-            }
-            return points;
-        }
+  const generateProblem = () => {
+    const types = ['linear', 'simple_quadratic'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    
+    if (type === 'linear') {
+      const x = Math.floor(Math.random() * 20) - 10;
+      const m = Math.floor(Math.random() * 5) + 1;
+      const b = Math.floor(Math.random() * 20) - 10;
+      const y = m * x + b;
+      setProblem({ 
+        type: 'linear', 
+        text: `Solve for x: ${m}x ${b >= 0 ? '+' : '-'} ${Math.abs(b)} = ${y}`, 
+        answer: x 
+      });
+    } else {
+      const x = Math.floor(Math.random() * 10) - 5;
+      const a = 1;
+      const b = -2 * x;
+      const c = x * x;
+      // (x - root)^2 = x^2 - 2x*root + root^2
+      // Simple perfect square for easy mental math
+      setProblem({
+        type: 'quadratic',
+        text: `Solve for x (positive root): x² ${b >= 0 ? '+' : ''}${b}x + ${c} = 0`,
+        answer: Math.abs(x)
+      });
+    }
+    setAnswer("");
+    setFeedback(null);
+  };
 
-        function updateUI() {
-            valA.textContent = state.a.toFixed(1);
-            valB.textContent = state.b.toFixed(1);
-            valC.textContent = state.c.toFixed(1);
+  useEffect(() => {
+    generateProblem();
+  }, []);
 
-            const bSign = state.b >= 0 ? '+' : '-';
-            const cSign = state.c >= 0 ? '+' : '-';
-            eqDisplay.innerHTML = `${state.a}x² ${bSign} ${Math.abs(state.b)}x ${cSign} ${Math.abs(state.c)} = 0`;
+  const checkAnswer = () => {
+    if (parseFloat(answer) === problem.answer) {
+      setFeedback('correct');
+      setStreak(s => s + 1);
+      setTimeout(generateProblem, 1500);
+    } else {
+      setFeedback('incorrect');
+      setStreak(0);
+    }
+  };
 
-            parabolaChart.data.datasets[0].data = generateChartPoints();
-            parabolaChart.update('none');
+  return (
+    <div className="max-w-xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4">
+      <div className="flex items-center justify-between">
+         <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg text-emerald-600">
+              <Brain size={24} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Quickfire Quiz</h2>
+         </div>
+         <div className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2">
+            🔥 Streak: {streak}
+         </div>
+      </div>
 
-            // Discriminant
-            const D = (state.b * state.b) - (4 * state.a * state.c);
-            discValue.textContent = D.toFixed(1);
-            discBadge.className = `px-4 py-1 rounded-full text-sm font-bold text-white transition-colors ${D > 0 ? 'bg-emerald-500' : D === 0 ? 'bg-amber-500' : 'bg-rose-500'}`;
-            discBadge.textContent = D > 0 ? "2 Real Roots" : D === 0 ? "1 Repeated Root" : "Complex Roots";
+      <Card className="p-8 text-center relative overflow-hidden">
+        {feedback === 'correct' && (
+          <div className="absolute inset-0 bg-emerald-100/50 flex items-center justify-center backdrop-blur-sm z-10 animate-in fade-in zoom-in">
+             <div className="bg-white dark:bg-slate-800 p-4 rounded-full shadow-lg text-emerald-500">
+               <Check size={48} strokeWidth={3} />
+             </div>
+          </div>
+        )}
+        
+        <div className="mb-8">
+          <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Question</span>
+          <h3 className="text-3xl font-mono font-bold text-slate-800 dark:text-white mt-4">{problem?.text}</h3>
+        </div>
 
-            // Vieta
-            if (state.a !== 0) {
-                const s = -state.b / state.a;
-                const p = state.c / state.a;
-                vietaSum.textContent = s.toFixed(2);
-                vietaProd.textContent = p.toFixed(2);
-                document.getElementById('bar-sum').style.width = `${Math.min(100, Math.abs(s) * 5 + 50)}%`;
-                document.getElementById('bar-prod').style.width = `${Math.min(100, Math.abs(p) * 5 + 50)}%`;
-            }
-        }
+        <div className="flex gap-2 max-w-xs mx-auto">
+          <input 
+            type="number" 
+            value={answer} 
+            onChange={e => setAnswer(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && checkAnswer()}
+            placeholder="x = ?"
+            className={`flex-1 text-center text-xl font-bold p-3 rounded-lg border-2 outline-none transition-colors ${feedback === 'incorrect' ? 'border-red-300 bg-red-50 text-red-600' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900'}`}
+          />
+          <Button onClick={checkAnswer} className="w-16">
+            <ArrowRight size={24} />
+          </Button>
+        </div>
+        
+        {feedback === 'incorrect' && (
+          <p className="mt-4 text-red-500 font-medium animate-in slide-in-from-top-2">Incorrect, try again!</p>
+        )}
+      </Card>
+      
+      <div className="text-center">
+        <button onClick={generateProblem} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-medium underline decoration-dashed">Skip Question</button>
+      </div>
+    </div>
+  );
+};
 
-        // --- Event Listeners ---
-        sliderA.addEventListener('input', (e) => { 
-            state.a = parseFloat(e.target.value); 
-            if (state.a === 0) state.a = 0.1; // Maintain quadratic nature
-            updateUI(); 
-        });
-        sliderB.addEventListener('input', (e) => { state.b = parseFloat(e.target.value); updateUI(); });
-        sliderC.addEventListener('input', (e) => { state.c = parseFloat(e.target.value); updateUI(); });
+const Reference = () => {
+  const topics = [
+    {
+      title: "Exponents",
+      items: [
+        { rule: "Product Rule", eq: "a^m \\cdot a^n = a^{m+n}" },
+        { rule: "Quotient Rule", eq: "\\frac{a^m}{a^n} = a^{m-n}" },
+        { rule: "Power Rule", eq: "(a^m)^n = a^{mn}" }
+      ]
+    },
+    {
+      title: "Logarithms",
+      items: [
+        { rule: "Product", eq: "\\log_b(xy) = \\log_b x + \\log_b y" },
+        { rule: "Quotient", eq: "\\log_b(x/y) = \\log_b x - \\log_b y" },
+        { rule: "Power", eq: "\\log_b(x^p) = p \\log_b x" }
+      ]
+    },
+    {
+      title: "Factoring",
+      items: [
+        { rule: "Difference of Squares", eq: "a^2 - b^2 = (a-b)(a+b)" },
+        { rule: "Perfect Square", eq: "a^2 + 2ab + b^2 = (a+b)^2" },
+        { rule: "Sum of Cubes", eq: "a^3 + b^3 = (a+b)(a^2 - ab + b^2)" }
+      ]
+    }
+  ];
 
-        window.scrollToSection = (id) => document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg text-amber-600">
+          <BookOpen size={24} />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Algebra Reference</h2>
+      </div>
 
-        window.addEventListener('DOMContentLoaded', () => {
-            initChart();
-            updateUI();
-            
-            // Quiz Button Logic
-            document.querySelectorAll('.quiz-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const isCorrect = this.dataset.correct === 'true';
-                    const feedback = this.parentElement.nextElementSibling;
-                    
-                    this.parentElement.querySelectorAll('button').forEach(b => {
-                        b.classList.remove('bg-indigo-50', 'border-indigo-600', 'bg-rose-50', 'border-rose-600');
-                        b.classList.add('border-gray-200');
-                    });
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {topics.map((topic, i) => (
+          <Card key={i} className="p-0">
+             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">
+               <h3 className="font-bold text-slate-700 dark:text-slate-200">{topic.title}</h3>
+             </div>
+             <div className="p-4 space-y-3">
+               {topic.items.map((item, j) => (
+                 <div key={j} className="flex flex-col">
+                   <span className="text-xs text-slate-400 uppercase font-semibold mb-1">{item.rule}</span>
+                   {/* Simulating math render with simple text for robustness in one file */}
+                   <span className="font-mono text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded">
+                     {item.eq.replace(/\\cdot/g, '·').replace(/\\frac/g, '').replace(/[\{\}]/g, '').replace(/\^/g, '^')}
+                   </span>
+                 </div>
+               ))}
+             </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
 
-                    if (isCorrect) {
-                        this.classList.add('bg-indigo-50', 'border-indigo-600');
-                        feedback.textContent = "✨ Excellent! You've got it.";
-                        feedback.className = "mt-3 text-indigo-600 font-bold text-sm block";
-                    } else {
-                        this.classList.add('bg-rose-50', 'border-rose-600');
-                        feedback.textContent = "Try again! Look at the 'a' coefficient.";
-                        feedback.className = "mt-3 text-rose-600 font-bold text-sm block";
-                    }
-                });
-            });
-        });
-    </script>
-</body>
-</html>
+// --- Main App Component ---
+
+export default function App() {
+  const [view, setView] = useState('dashboard');
+  const [darkMode, setDarkMode] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'linear', label: 'Linear Solver', icon: TrendingUp },
+    { id: 'quadratic', label: 'Quadratic', icon: Sigma },
+    { id: 'quiz', label: 'Practice Quiz', icon: Activity },
+    { id: 'reference', label: 'Formulas', icon: BookOpen },
+  ];
+
+  return (
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 font-sans text-slate-900 dark:text-slate-100`}>
+      
+      {/* Sidebar for Desktop */}
+      <aside className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col z-20">
+        <div className="p-6 flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">A</div>
+          <span className="font-bold text-xl tracking-tight">AlgebraSuite</span>
+        </div>
+        
+        <nav className="flex-1 px-4 space-y-2 mt-4">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setView(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm font-medium ${view === item.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+            >
+              <item.icon size={20} />
+              {item.label}
+              {view === item.id && <ChevronRight size={16} className="ml-auto opacity-50" />}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800">
+          <button 
+            onClick={() => setDarkMode(!darkMode)}
+            className="flex items-center justify-center w-full gap-2 p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          >
+            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            <span className="text-sm font-medium">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between z-30">
+        <div className="font-bold text-lg flex items-center gap-2">
+           <div className="w-6 h-6 bg-indigo-600 rounded flex items-center justify-center text-white text-sm">A</div>
+           AlgebraSuite
+        </div>
+        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-slate-600 dark:text-slate-300">
+          {mobileMenuOpen ? <X /> : <Menu />}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 bg-white dark:bg-slate-950 z-20 pt-20 px-6 md:hidden animate-in slide-in-from-top-10">
+          <div className="space-y-4">
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => { setView(item.id); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-4 p-4 rounded-xl text-lg font-medium border ${view === item.id ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'border-slate-100 bg-white text-slate-600'}`}
+              >
+                <item.icon size={24} />
+                {item.label}
+              </button>
+            ))}
+             <button 
+                onClick={() => setDarkMode(!darkMode)}
+                className="w-full flex items-center gap-4 p-4 rounded-xl text-lg font-medium border border-slate-100 bg-slate-50 text-slate-600"
+              >
+                {darkMode ? <Sun size={24} /> : <Moon size={24} />}
+                {darkMode ? 'Light Mode' : 'Dark Mode'}
+              </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      <main className={`md:pl-64 pt-20 md:pt-0 min-h-screen transition-all`}>
+        <div className="max-w-6xl mx-auto p-6 md:p-12">
+          {view === 'dashboard' && <Dashboard changeView={setView} />}
+          {view === 'linear' && <LinearTool />}
+          {view === 'quadratic' && <QuadraticTool />}
+          {view === 'quiz' && <QuizMode />}
+          {view === 'reference' && <Reference />}
+        </div>
+      </main>
+
+    </div>
+  );
+}
