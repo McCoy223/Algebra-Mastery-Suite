@@ -1,3 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quadratics Explorer: Interactive Study Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 400px;
+        }
+        
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            margin-top: -7px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+        
+        body {
+            background-color: #FDFBF7;
+            color: #2D3748;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .ai-loading {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #fdfbf7 0%, #f3f4f6 100%);
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-indigo-100 selection:text-indigo-900">
+
+    <!-- Chosen Palette: Warm Neutrals & Indigo Accents -->
+    <!-- Application Structure Plan:
+         1. Hero Section: Introduction to Quadratics.
+         2. The Laboratory: Real-time manipulation of coefficients with Chart.js visualization.
+         3. ✨ AI Learning Assistant: Integration with Gemini for Concept Explanations and Real-world Context.
+         4. Analysis Section: Traditional mathematical metrics (Discriminant, Vieta's).
+         5. Knowledge Check: Assessment quiz.
+    -->
+
+    <nav class="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold tracking-tight text-gray-800">Quadratics<span class="text-indigo-600">Explorer</span></span>
+                </div>
+                <div class="hidden sm:flex items-center space-x-8">
+                    <button onclick="scrollToSection('intro')" class="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors">Intro</button>
+                    <button onclick="scrollToSection('lab')" class="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors">Laboratory</button>
+                    <button onclick="scrollToSection('ai-insights')" class="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors font-bold">✨ AI Assistant</button>
+                    <button onclick="scrollToSection('analysis')" class="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors">Analysis</button>
+                    <button onclick="scrollToSection('quiz')" class="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors">Quiz</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+
+        <!-- Section 1: Introduction -->
+        <section id="intro" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            <div class="max-w-3xl mx-auto text-center space-y-6">
+                <h1 class="text-4xl font-extrabold text-gray-900">Mastering Quadratic Equations</h1>
+                <p class="text-lg text-gray-600 leading-relaxed">
+                    A dynamic environment for exploring second-degree polynomials, now enhanced with ✨ Gemini AI insights.
+                </p>
+                <div class="bg-indigo-50 inline-block px-8 py-4 rounded-xl border border-indigo-100">
+                    <p class="text-3xl font-mono font-bold text-gray-800">ax² + bx + c = 0</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: The Laboratory -->
+        <section id="lab">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">The Laboratory</h2>
+                <p class="text-gray-600 mt-2">Adjust the sliders to see the parabola transform instantly.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div class="lg:col-span-4 space-y-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-sm font-bold text-gray-700">Coefficient a (Leading)</label>
+                            <span id="val-a" class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">1.0</span>
+                        </div>
+                        <input type="range" id="slider-a" min="-5" max="5" step="0.1" value="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="space-y-4 pt-4 border-t border-gray-100">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-sm font-bold text-gray-700">Coefficient b (Linear)</label>
+                            <span id="val-b" class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">0.0</span>
+                        </div>
+                        <input type="range" id="slider-b" min="-10" max="10" step="0.5" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="space-y-4 pt-4 border-t border-gray-100">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-sm font-bold text-gray-700">Coefficient c (Constant)</label>
+                            <span id="val-c" class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">0.0</span>
+                        </div>
+                        <input type="range" id="slider-c" min="-10" max="10" step="0.5" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="mt-8 p-4 bg-indigo-50 rounded-xl text-center border border-indigo-100">
+                        <p id="equation-display" class="text-xl font-mono font-bold text-gray-900">1x² + 0x + 0 = 0</p>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="chart-container">
+                        <canvas id="parabolaChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: ✨ AI Insights (Gemini Integration) -->
+        <section id="ai-insights" class="bg-indigo-50/50 rounded-3xl p-8 border border-indigo-100">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                <div class="max-w-2xl">
+                    <h2 class="text-2xl font-bold text-indigo-900 flex items-center gap-2">
+                        ✨ AI Learning Assistant
+                    </h2>
+                    <p class="text-indigo-700 mt-2">Get personalized mathematical insights and real-world application challenges powered by Gemini.</p>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="generateAIExplanation()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold shadow-md transition-all flex items-center gap-2 active:scale-95">
+                        ✨ Explain Concept
+                    </button>
+                    <button onclick="generateAIChallenge()" class="bg-white hover:bg-indigo-50 text-indigo-600 border border-indigo-200 px-6 py-3 rounded-xl font-semibold shadow-md transition-all flex items-center gap-2 active:scale-95">
+                        ✨ Challenge Me!
+                    </button>
+                </div>
+            </div>
+
+            <div id="ai-output-container" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Explanation Card -->
+                <div id="ai-explanation-card" class="bg-white p-6 rounded-2xl border border-indigo-100 shadow-sm opacity-0 transition-opacity duration-500">
+                    <div class="flex items-center gap-2 mb-4 text-indigo-900 font-bold border-b border-indigo-50 pb-2">
+                        <span>🔍</span> Visual Analysis
+                    </div>
+                    <div id="ai-explanation-content" class="text-gray-700 text-sm leading-relaxed whitespace-pre-line"></div>
+                </div>
+                <!-- Challenge Card -->
+                <div id="ai-challenge-card" class="bg-white p-6 rounded-2xl border border-indigo-100 shadow-sm opacity-0 transition-opacity duration-500">
+                    <div class="flex items-center gap-2 mb-4 text-indigo-900 font-bold border-b border-indigo-50 pb-2">
+                        <span>🚀</span> Scenario Challenge
+                    </div>
+                    <div id="ai-challenge-content" class="text-gray-700 text-sm leading-relaxed whitespace-pre-line"></div>
+                </div>
+            </div>
+            
+            <div id="ai-placeholder" class="text-center py-16 border-2 border-dashed border-indigo-200 rounded-2xl">
+                <div class="text-indigo-300 text-4xl mb-3">✨</div>
+                <p class="text-indigo-500 font-medium">Click a button above to generate AI-powered insights for your equation.</p>
+            </div>
+        </section>
+
+        <!-- Section 4: Analysis & Insights -->
+        <section id="analysis">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Discriminant Card -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">The Discriminant</h3>
+                        <span class="text-xs font-mono text-gray-400">b² - 4ac</span>
+                    </div>
+                    <div class="flex-grow flex flex-col justify-center items-center py-6">
+                        <div id="discriminant-value" class="text-5xl font-extrabold text-gray-800 mb-2">0</div>
+                        <div id="discriminant-badge" class="px-4 py-1 rounded-full text-sm font-bold text-white bg-gray-500 transition-colors">Calculating...</div>
+                    </div>
+                </div>
+
+                <!-- Vieta's Card -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">Vieta's Formulas</h3>
+                        <span class="text-xs font-mono text-gray-400">Root Properties</span>
+                    </div>
+                    <div class="space-y-6 flex-grow">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm text-gray-600">Sum of Roots (-b/a)</span>
+                                <span id="vieta-sum" class="text-sm font-mono font-bold">0</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2">
+                                <div id="bar-sum" class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: 50%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm text-gray-600">Product of Roots (c/a)</span>
+                                <span id="vieta-prod" class="text-sm font-mono font-bold">0</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2">
+                                <div id="bar-prod" class="bg-emerald-500 h-2 rounded-full transition-all duration-300" style="width: 50%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Quiz -->
+        <section id="quiz">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Knowledge Check</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="quiz-container">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <p class="font-bold text-gray-900 mb-4">1. How can you identify if a parabola opens downward just by looking at the equation?</p>
+                    <div class="space-y-2">
+                        <button class="quiz-btn w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm transition-all" data-correct="true">If the leading coefficient 'a' is negative.</button>
+                        <button class="quiz-btn w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm transition-all" data-correct="false">If the constant 'c' is negative.</button>
+                        <button class="quiz-btn w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm transition-all" data-correct="false">If the discriminant is zero.</button>
+                    </div>
+                    <div class="mt-3 hidden text-sm feedback"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-50 border-t border-gray-200 py-10 mt-10">
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <p class="text-gray-500 text-sm">✨ Interactive Learning Engine | Built with Gemini API</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Gemini API Configuration ---
+        const apiKey = ""; // Provided by environment
+        const state = { a: 1.0, b: 0.0, c: 0.0 };
+
+        async function callGemini(prompt, systemPrompt) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const result = await response.json();
+                    return result.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+                } catch (e) {
+                    await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
+                }
+            }
+            return "Connection error. Please check your network and try again.";
+        }
+
+        async function generateAIExplanation() {
+            const placeholder = document.getElementById('ai-placeholder');
+            const output = document.getElementById('ai-output-container');
+            const card = document.getElementById('ai-explanation-card');
+            const content = document.getElementById('ai-explanation-content');
+            
+            placeholder.classList.add('hidden');
+            output.classList.remove('hidden');
+            card.classList.remove('opacity-0');
+            content.innerHTML = '<div class="ai-loading flex items-center gap-2 text-indigo-500 italic"><span class="animate-spin text-lg">✨</span> Analyzing mathematical curve...</div>';
+
+            const prompt = `Analyze the quadratic equation y = ${state.a}x² + ${state.b}x + ${state.c}. Explain in 3 concise bullet points: 
+                1. Direction of opening and width. 
+                2. Where it crosses the y-axis. 
+                3. The nature of its roots based on the current coefficients. 
+                Make the tone educational and encouraging.`;
+            
+            const system = "You are a professional math tutor who simplifies complex algebra into clear, visual explanations. Do not use LaTeX symbols, use plain text.";
+            
+            const explanation = await callGemini(prompt, system);
+            content.innerHTML = explanation;
+        }
+
+        async function generateAIChallenge() {
+            const placeholder = document.getElementById('ai-placeholder');
+            const output = document.getElementById('ai-output-container');
+            const card = document.getElementById('ai-challenge-card');
+            const content = document.getElementById('ai-challenge-content');
+            
+            placeholder.classList.add('hidden');
+            output.classList.remove('hidden');
+            card.classList.remove('opacity-0');
+            content.innerHTML = '<div class="ai-loading flex items-center gap-2 text-indigo-500 italic"><span class="animate-bounce text-lg">✨</span> Dreaming up a scenario...</div>';
+
+            const prompt = `Create a real-world word problem (max 4 lines) where y = ${state.a}x² + ${state.b}x + ${state.c} represents something (like a ball being thrown, a bridge arch, or a profit curve). Ask one specific question the student could solve using this equation.`;
+            
+            const system = "You are an imaginative STEM educator who creates engaging, real-world math applications.";
+            
+            const challenge = await callGemini(prompt, system);
+            content.innerHTML = challenge;
+        }
+
+        // --- Core Application Logic ---
+        const sliderA = document.getElementById('slider-a');
+        const sliderB = document.getElementById('slider-b');
+        const sliderC = document.getElementById('slider-c');
+        const valA = document.getElementById('val-a');
+        const valB = document.getElementById('val-b');
+        const valC = document.getElementById('val-c');
+        const eqDisplay = document.getElementById('equation-display');
+        const discValue = document.getElementById('discriminant-value');
+        const discBadge = document.getElementById('discriminant-badge');
+        const vietaSum = document.getElementById('vieta-sum');
+        const vietaProd = document.getElementById('vieta-prod');
+
+        const ctx = document.getElementById('parabolaChart').getContext('2d');
+        let parabolaChart;
+
+        function initChart() {
+            const data = generateChartPoints();
+            parabolaChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'f(x)',
+                        data: data,
+                        borderColor: '#4f46e5',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Axis',
+                        data: [{x: -10, y: 0}, {x: 10, y: 0}],
+                        borderColor: '#e2e8f0',
+                        borderWidth: 1,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: 'linear', position: 'center', min: -10, max: 10 },
+                        y: { type: 'linear', position: 'center', min: -15, max: 15 }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function generateChartPoints() {
+            const points = [];
+            for (let x = -10; x <= 10; x += 0.2) {
+                let y = (state.a * (x * x)) + (state.b * x) + state.c;
+                points.push({ x: x, y: y });
+            }
+            return points;
+        }
+
+        function updateUI() {
+            valA.textContent = state.a.toFixed(1);
+            valB.textContent = state.b.toFixed(1);
+            valC.textContent = state.c.toFixed(1);
+
+            const bSign = state.b >= 0 ? '+' : '-';
+            const cSign = state.c >= 0 ? '+' : '-';
+            eqDisplay.innerHTML = `${state.a}x² ${bSign} ${Math.abs(state.b)}x ${cSign} ${Math.abs(state.c)} = 0`;
+
+            parabolaChart.data.datasets[0].data = generateChartPoints();
+            parabolaChart.update('none');
+
+            // Discriminant
+            const D = (state.b * state.b) - (4 * state.a * state.c);
+            discValue.textContent = D.toFixed(1);
+            discBadge.className = `px-4 py-1 rounded-full text-sm font-bold text-white transition-colors ${D > 0 ? 'bg-emerald-500' : D === 0 ? 'bg-amber-500' : 'bg-rose-500'}`;
+            discBadge.textContent = D > 0 ? "2 Real Roots" : D === 0 ? "1 Repeated Root" : "Complex Roots";
+
+            // Vieta
+            if (state.a !== 0) {
+                const s = -state.b / state.a;
+                const p = state.c / state.a;
+                vietaSum.textContent = s.toFixed(2);
+                vietaProd.textContent = p.toFixed(2);
+                document.getElementById('bar-sum').style.width = `${Math.min(100, Math.abs(s) * 5 + 50)}%`;
+                document.getElementById('bar-prod').style.width = `${Math.min(100, Math.abs(p) * 5 + 50)}%`;
+            }
+        }
+
+        // --- Event Listeners ---
+        sliderA.addEventListener('input', (e) => { 
+            state.a = parseFloat(e.target.value); 
+            if (state.a === 0) state.a = 0.1; // Maintain quadratic nature
+            updateUI(); 
+        });
+        sliderB.addEventListener('input', (e) => { state.b = parseFloat(e.target.value); updateUI(); });
+        sliderC.addEventListener('input', (e) => { state.c = parseFloat(e.target.value); updateUI(); });
+
+        window.scrollToSection = (id) => document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            updateUI();
+            
+            // Quiz Button Logic
+            document.querySelectorAll('.quiz-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const isCorrect = this.dataset.correct === 'true';
+                    const feedback = this.parentElement.nextElementSibling;
+                    
+                    this.parentElement.querySelectorAll('button').forEach(b => {
+                        b.classList.remove('bg-indigo-50', 'border-indigo-600', 'bg-rose-50', 'border-rose-600');
+                        b.classList.add('border-gray-200');
+                    });
+
+                    if (isCorrect) {
+                        this.classList.add('bg-indigo-50', 'border-indigo-600');
+                        feedback.textContent = "✨ Excellent! You've got it.";
+                        feedback.className = "mt-3 text-indigo-600 font-bold text-sm block";
+                    } else {
+                        this.classList.add('bg-rose-50', 'border-rose-600');
+                        feedback.textContent = "Try again! Look at the 'a' coefficient.";
+                        feedback.className = "mt-3 text-rose-600 font-bold text-sm block";
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
 import React, { useState, useEffect } from 'react';
 import { 
   Calculator, 
